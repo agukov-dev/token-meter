@@ -3,11 +3,12 @@
 A Claude Code status line: rate limits, context and spend in one row.
 
 ```text
-5h ▰▰▰▰▱ 82% ↑ high burn till 12:00 │ 7d ▰▰▱▱▱ 41% │ ctx ▰▰▱▱▱ 34% │ api$ 3.13 │ 1d 7.20 │ 30d 452 │ opus 5.5
+5h ▰▰▰▰▱ 82% ↑ high burn till 12:00 │ 7d ▰▰▱▱▱ 41% │ ctx ▰▰▱▱▱ 34% │ api$ 3.13 │ 1d 7.20 │ Oct 412 │ opus 5.5
 ```
 
 - `5h`, `7d`: used share of the rate-limit windows; $\color{red}\textsf{↑ high burn}$: burning faster than time passes.
-- `api$`: session, 1-day and 30-day cost at API prices, not your subscription bill.
+- `api$`: cost of the session, of today (`1d`) and of the calendar month so far (`Oct`) at API prices,
+  not your subscription bill.
 - $\color{green}\textsf{< 50}$ / $\color{orange}\textsf{50–79}$ / $\color{red}\textsf{80+}$ %.
 
 ## Install

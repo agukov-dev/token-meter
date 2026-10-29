@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url'
  *   rate_limits?: Partial<Record<'five_hour' | 'seven_day' | 'spend_limit', Limit>>,
  * }} Input
  * @typedef {{ showSpend: boolean, currency: 'USD' | 'EUR', rate?: number }} Settings
- * @typedef {{ today: number, month: number, since?: string, hasUnpriced: boolean }} Spend
+ * @typedef {{ today: number, month: number, monthName: string, since?: string, hasUnpriced: boolean }} Spend
  * @typedef {{ name: string, isSubscription: boolean }} Plan
  * @typedef {{ days: Record<string, number>, lastUSD: number, updatedAt: number }} Ledger
  * @typedef {{ days: Record<string, number>, unpriced: string[], isUnavailable?: boolean }} Backfill
@@ -29,7 +29,6 @@ import { fileURLToPath } from 'node:url'
  */
 
 const DAY_MS = 24 * 3600 * 1000
-const SPEND_DAYS = 30
 const LEDGER_KEEP_MS = 35 * DAY_MS
 const PLAN_MAX_AGE_MS = DAY_MS
 const RATE_MAX_AGE_MS = 12 * 3600 * 1000
@@ -100,6 +99,9 @@ const dayKey = (ms) => {
 
   return `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`
 }
+
+// The first day of the calendar month of `ms`, in local time.
+const monthStartKey = (ms) => `${dayKey(ms).slice(0, 8)}01`
 
 const shortDate = (key) => {
   const [, month = '1', day = '1'] = key.split('-')
@@ -190,7 +192,7 @@ function recordSessionCost(sessionId, usd, now) {
 
 function totals(now, meta) {
   const today = dayKey(now)
-  const from = dayKey(now - (SPEND_DAYS - 1) * DAY_MS)
+  const from = monthStartKey(now)
   const backfill = readJson(FILES.backfill)
   let spend = { today: 0, month: 0 }
   const add = (days) => {
@@ -213,7 +215,12 @@ function totals(now, meta) {
   }
   const firstDay = backfill && !backfill.isUnavailable ? undefined : dayKey(meta.installedAt)
 
-  return { ...spend, since: firstDay && firstDay > from ? firstDay : undefined, hasUnpriced: (backfill?.unpriced.length ?? 0) > 0 }
+  return {
+    ...spend,
+    monthName: MONTHS[new Date(now).getMonth()],
+    since: firstDay && firstDay > from ? firstDay : undefined,
+    hasUnpriced: (backfill?.unpriced.length ?? 0) > 0,
+  }
 }
 
 export function render(input, settings, figures) {
@@ -247,7 +254,7 @@ export function render(input, settings, figures) {
     ansi.bold(cash(input.cost?.total_cost_usd ?? 0)) +
     ansi.dim(' │ 1d ') +
     ansi.bold(cash(spend.today)) +
-    ansi.dim(' │ 30d ') +
+    ansi.dim(` │ ${spend.monthName} `) +
     ansi.bold(cash(spend.month)) +
     (spend.hasUnpriced ? ansi.yellow('+?') : '') +
     (spend.since ? ansi.dim(` since ${shortDate(spend.since)}`) : '')
@@ -357,7 +364,7 @@ async function main() {
         seven_day: { used_percentage: 41, resets_at: Math.round(now / 1000) + 3 * 86400 },
       },
     }
-    const spend = { today: 7.2, month: 452, hasUnpriced: false }
+    const spend = { today: 7.2, month: 412, monthName: MONTHS[new Date(now).getMonth()], hasUnpriced: false }
     const row = render(sample, settings.currency === 'USD' ? settings : { ...settings, rate }, { spend, now })
     // Plain text: the preview is shown in a chat, not a terminal.
     process.stdout.write(`${row.replace(/\x1b\[[\d;]*m/g, '')}\n`)
